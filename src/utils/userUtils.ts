@@ -1,0 +1,140 @@
+import appconfig from '../appconfig';
+import { c_autoLogin, c_pw, c_token, c_uid, c_userName } from './cookies';
+import request from './request';
+import defaultAvatar from '../assets/defaultAvatar.png';
+import { getContextRef } from '../context';
+
+export const isLogin = () => {
+  //console.log(getGlobalState(), c_token(Number(c_uid())));
+  return c_token(Number(c_uid())) !== '';
+  //return userInfoStorage.value.token !== undefined;
+};
+
+export const valiLogin = () => {
+  request('/user/me.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: {},
+  })
+    .then(e => {
+      console.log(e);
+    })
+    .catch(e => {
+      console.log(e);
+    });
+};
+
+export const logout = () => {
+  c_userName(Number(c_uid()), '');
+  c_token(Number(c_uid()), '');
+  c_pw(Number(c_uid()), '');
+  c_autoLogin(false);
+
+  const ctx = getContextRef();
+  if (!ctx) {
+    console.warn('Context not ready!');
+    return;
+  }
+  ctx.setLoginUserInfo({ loginUserInfo: { id: -1, name: '', email: '', avatar: '', createTime: '', hitokoto: '', token: '', password: '' } });
+};
+
+export const loginUser = async ({ email, password }: { email: string; password: string }) => {
+  return request<any>('/user/login.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: { email, password },
+  });
+};
+
+export const loginCurrentUser = async () => {
+  request<any>('/user/login.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: { email: c_userName(Number(c_uid())), password: c_pw(Number(c_uid())) },
+  })
+    .then(e => {
+      const token = e.token;
+      const email = e.email;
+      const uid = e.uid;
+
+      c_token(uid, token);
+      c_userName(uid, email);
+      c_uid(String(uid));
+
+      const ctx = getContextRef();
+      if (!ctx) {
+        console.warn('Context not ready!');
+        return;
+      }
+      ctx.setLoginUserInfo({
+        id: uid,
+        name: e.nickname,
+        email: email,
+        avatar: e.avatar,
+        createTime: e.create_date,
+        hitokoto: e.hitokoto,
+        token: e.token,
+        password: c_pw(Number(c_uid())),
+      });
+    })
+    .catch(e => {
+      console.log(e);
+      alert('login failed');
+
+      logout();
+    });
+};
+
+export const createUser = async ({ email, name, password, token }: { email: string; name: string; password: string; token: string }) => {
+  return request<any>('/user/user.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: { email, name, password, token },
+  });
+};
+
+export const resetPassword = async ({ email, pw }: { email: string; pw: string }) => {
+  return request<any>('/user/user.php', {
+    method: 'PATCH',
+    data: { email, pw },
+  });
+};
+
+/**
+ * 判断是否已登录，未登录则弹出提示，返回是否已登录
+ * @param {string} [text] 显示的提示文本，默认为'登録後操作可'
+ * @returns {boolean} 是否已经登录
+ */
+export const registerAlert = (text?: string) => {
+  if (!isLogin()) {
+    alert(text ?? '登録後操作可');
+  }
+  return isLogin();
+};
+
+export interface LoginUserInfo {
+  id: number;
+  name: string;
+  email: string;
+  avatar: string;
+  createTime: string;
+  hitokoto: string;
+  token: string;
+  password?: string;
+}
+
+export const getAvatarFullURL = (avatar_url: string | undefined) => {
+  if (avatar_url) {
+    return appconfig.apiBaseURL + '/user' + avatar_url;
+  } else {
+    return defaultAvatar;
+  }
+};

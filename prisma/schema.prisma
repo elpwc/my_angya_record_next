@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  name        String    @db.VarChar(100)
+  pw          String    @db.VarChar(100)
+  is_deleted  Boolean?  @default(false)
+  is_banned   Boolean?  @default(false)
+  auth        Int?      @default(0)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @updatedAt @db.DateTime(0)
+  last_login  DateTime? @db.DateTime(0)
+  email       String    @unique @db.VarChar(100)
+  verified    Boolean?  @default(false)
+  hitokoto    String?   @db.VarChar(300)
+  avatar_url  String?   @db.VarChar(100)
+  recordgroups RecordGroup[]
+
+  @@map("user")
+}
+
+model RecordGroup {
+  id               Int       @id @default(autoincrement()) @db.UnsignedInt
+  uid              Int?      @db.UnsignedInt
+  name             String    @db.VarChar(100)
+  desc             String    @db.VarChar(300)
+  mapid            String    @db.VarChar(32)
+  score            Int       @default(-1)
+  is_deleted       Boolean?  @default(false)
+  is_public        Boolean?  @default(false)
+  show_lived_level Boolean?  @default(true)
+  create_date      DateTime? @default(now()) @db.DateTime(0)
+  update_date      DateTime? @default(now()) @updatedAt @db.DateTime(0)
+  user    User?    @relation(fields: [uid], references: [id])
+  records Record[]
+
+  @@map("recordgroup")
+}
+
+model Record {
+  id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  group_id    Int?      @db.UnsignedInt
+  admin_id    String?   @db.VarChar(32)
+  level       Int?      @db.TinyInt
+  data        String?   @db.VarChar(256)
+  is_deleted  Boolean?  @default(false)
+  create_date DateTime? @default(now()) @db.DateTime(0)
+  update_date DateTime? @default(now()) @updatedAt @db.DateTime(0)
+  comment     String?   @db.VarChar(300)
+  recordgroup RecordGroup? @relation(fields: [group_id], references: [id])
+
+  @@map("record")
+}
